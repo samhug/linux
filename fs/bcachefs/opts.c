@@ -395,8 +395,8 @@ int bch2_opt_parse(struct bch_fs *c,
 
 		if (ret < 0) {
 			if (err)
-				prt_printf(err, "%s: parse error",
-					   opt->attr.name);
+				prt_printf(err, "%s: parse error (%s): '%s'",
+					   opt->attr.name, bch2_err_str(ret), val);
 			return ret;
 		}
 	}
