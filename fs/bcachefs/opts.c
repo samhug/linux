@@ -578,6 +578,7 @@ out:
 int bch2_parse_mount_opts(struct bch_fs *c, struct bch_opts *opts,
 			  struct printbuf *parse_later, char *options)
 {
+	struct printbuf err = PRINTBUF;
 	char *copied_opts, *copied_opts_start;
 	char *opt, *name, *val;
 	int ret;
@@ -597,12 +598,16 @@ int bch2_parse_mount_opts(struct bch_fs *c, struct bch_opts *opts,
 		return -ENOMEM;
 	copied_opts_start = copied_opts;
 
+	prt_printf(&err, "options:");
 	while ((opt = strsep(&copied_opts, ",")) != NULL) {
 		if (!*opt)
 			continue;
 
 		name	= strsep(&opt, "=");
 		val	= opt;
+
+		prt_printf(&err, " %s=%s",
+			name, val ? val : "NULL");
 
 		ret = bch2_parse_one_mount_opt(c, opts, parse_later, name, val);
 		if (ret < 0)
@@ -613,6 +618,7 @@ int bch2_parse_mount_opts(struct bch_fs *c, struct bch_opts *opts,
 	goto out;
 
 out:
+	printbuf_exit(&err);
 	kfree(copied_opts_start);
 	return ret;
 }

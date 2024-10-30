@@ -2322,6 +2322,11 @@ static int bch2_fs_parse_param(struct fs_context *fc,
 	if (fc->root)
 		c = fc->root->d_sb->s_fs_info;
 
+	struct printbuf err = PRINTBUF;
+	prt_printf(&err, " %s=%s",
+		param->key, param->string ? param->string : "NULL");
+	printbuf_exit(&err);
+
 	int ret = bch2_parse_one_mount_opt(c, &opts->opts,
 					   &opts->parse_later, param->key,
 					   param->string);
