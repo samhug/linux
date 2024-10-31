@@ -23,6 +23,7 @@
 
 #include <linux/backing-dev.h>
 #include <linux/sort.h>
+#include <linux/string_choices.h>
 
 static const struct blk_holder_ops bch2_sb_handle_bdev_ops = {
 };
@@ -285,6 +286,11 @@ static int validate_sb_layout(struct bch_sb_layout *layout, struct printbuf *out
 	if (layout->nr_superblocks > ARRAY_SIZE(layout->sb_offset)) {
 		prt_printf(out, "Invalid superblock layout: too many superblocks");
 		return -BCH_ERR_invalid_sb_layout_nr_superblocks;
+	}
+
+	if (layout->sb_max_size_bits > BCH_SB_LAYOUT_SIZE_BITS_MAX) {
+		prt_printf(out, "Invalid superblock layout: max_size_bits too high");
+		return -BCH_ERR_invalid_sb_layout_sb_max_size_bits;
 	}
 
 	max_sectors = 1 << layout->sb_max_size_bits;
@@ -873,7 +879,7 @@ static void write_super_endio(struct bio *bio)
 			       ? BCH_MEMBER_ERROR_write
 			       : BCH_MEMBER_ERROR_read,
 			       "superblock %s error: %s",
-			       bio_data_dir(bio) ? "write" : "read",
+			       str_write_read(bio_data_dir(bio)),
 			       bch2_blk_status_to_str(bio->bi_status)))
 		ca->sb_write_error = 1;
 

@@ -97,9 +97,9 @@ int bch2_btree_node_check_topology(struct btree_trans *trans, struct btree *b)
 			bch2_topology_error(c);
 
 			printbuf_reset(&buf);
-			prt_str(&buf, "end of prev node doesn't match start of next node\n"),
-			prt_printf(&buf, "  in btree %s level %u node ",
-				   bch2_btree_id_str(b->c.btree_id), b->c.level);
+			prt_str(&buf, "end of prev node doesn't match start of next node\n  in ");
+			bch2_btree_id_level_to_text(&buf, b->c.btree_id, b->c.level);
+			prt_str(&buf, " node ");
 			bch2_bkey_val_to_text(&buf, c, bkey_i_to_s_c(&b->key));
 			prt_str(&buf, "\n  prev ");
 			bch2_bkey_val_to_text(&buf, c, bkey_i_to_s_c(prev.k));
@@ -118,9 +118,9 @@ int bch2_btree_node_check_topology(struct btree_trans *trans, struct btree *b)
 		bch2_topology_error(c);
 
 		printbuf_reset(&buf);
-		prt_str(&buf, "empty interior node\n");
-		prt_printf(&buf, "  in btree %s level %u node ",
-			   bch2_btree_id_str(b->c.btree_id), b->c.level);
+		prt_str(&buf, "empty interior node\n  in ");
+		bch2_btree_id_level_to_text(&buf, b->c.btree_id, b->c.level);
+		prt_str(&buf, " node ");
 		bch2_bkey_val_to_text(&buf, c, bkey_i_to_s_c(&b->key));
 
 		need_fsck_err(trans, btree_node_topology_empty_interior_node, "%s", buf.buf);
@@ -129,9 +129,9 @@ int bch2_btree_node_check_topology(struct btree_trans *trans, struct btree *b)
 		bch2_topology_error(c);
 
 		printbuf_reset(&buf);
-		prt_str(&buf, "last child node doesn't end at end of parent node\n");
-		prt_printf(&buf, "  in btree %s level %u node ",
-			   bch2_btree_id_str(b->c.btree_id), b->c.level);
+		prt_str(&buf, "last child node doesn't end at end of parent node\n  in ");
+		bch2_btree_id_level_to_text(&buf, b->c.btree_id, b->c.level);
+		prt_str(&buf, " node ");
 		bch2_bkey_val_to_text(&buf, c, bkey_i_to_s_c(&b->key));
 		prt_str(&buf, "\n  last key ");
 		bch2_bkey_val_to_text(&buf, c, bkey_i_to_s_c(prev.k));
@@ -1434,6 +1434,15 @@ bch2_btree_insert_keys_interior(struct btree_update *as,
 	}
 }
 
+static bool key_deleted_in_insert(struct keylist *insert_keys, struct bpos pos)
+{
+	if (insert_keys)
+		for_each_keylist_key(insert_keys, k)
+			if (bkey_deleted(&k->k) && bpos_eq(k->k.p, pos))
+				return true;
+	return false;
+}
+
 /*
  * Move keys from n1 (original replacement node, now lower node) to n2 (higher
  * node)
@@ -1441,7 +1450,8 @@ bch2_btree_insert_keys_interior(struct btree_update *as,
 static void __btree_split_node(struct btree_update *as,
 			       struct btree_trans *trans,
 			       struct btree *b,
-			       struct btree *n[2])
+			       struct btree *n[2],
+			       struct keylist *insert_keys)
 {
 	struct bkey_packed *k;
 	struct bpos n1_pos = POS_MIN;
@@ -1476,7 +1486,8 @@ static void __btree_split_node(struct btree_update *as,
 		if (b->c.level &&
 		    u64s < n1_u64s &&
 		    u64s + k->u64s >= n1_u64s &&
-		    bch2_key_deleted_in_journal(trans, b->c.btree_id, b->c.level, uk.p))
+		    (bch2_key_deleted_in_journal(trans, b->c.btree_id, b->c.level, uk.p) ||
+		     key_deleted_in_insert(insert_keys, uk.p)))
 			n1_u64s += k->u64s;
 
 		i = u64s >= n1_u64s;
@@ -1603,7 +1614,7 @@ static int btree_split(struct btree_update *as, struct btree_trans *trans,
 		n[0] = n1 = bch2_btree_node_alloc(as, trans, b->c.level);
 		n[1] = n2 = bch2_btree_node_alloc(as, trans, b->c.level);
 
-		__btree_split_node(as, trans, b, n);
+		__btree_split_node(as, trans, b, n, keys);
 
 		if (keys) {
 			btree_split_insert_keys(as, trans, path, n1, keys);
@@ -2568,8 +2579,9 @@ static void bch2_btree_update_to_text(struct printbuf *out, struct btree_update 
 	prt_printf(out, "%ps: ", (void *) as->ip_started);
 	bch2_trans_commit_flags_to_text(out, as->flags);
 
-	prt_printf(out, " btree=%s l=%u-%u mode=%s nodes_written=%u cl.remaining=%u journal_seq=%llu\n",
-		   bch2_btree_id_str(as->btree_id),
+	prt_str(out, " ");
+	bch2_btree_id_to_text(out, as->btree_id);
+	prt_printf(out, " l=%u-%u mode=%s nodes_written=%u cl.remaining=%u journal_seq=%llu\n",
 		   as->update_level_start,
 		   as->update_level_end,
 		   bch2_btree_update_modes[as->mode],

@@ -144,7 +144,7 @@ int __bch2_insert_snapshot_whiteouts(struct btree_trans *trans,
 	       !(ret = bkey_err(old_k)) &&
 	       bkey_eq(old_pos, old_k.k->p)) {
 		struct bpos whiteout_pos =
-			SPOS(new_pos.inode, new_pos.offset, old_k.k->p.snapshot);;
+			SPOS(new_pos.inode, new_pos.offset, old_k.k->p.snapshot);
 
 		if (!bch2_snapshot_is_ancestor(c, old_k.k->p.snapshot, old_pos.snapshot) ||
 		    snapshot_list_has_ancestor(c, &s, old_k.k->p.snapshot))
@@ -865,8 +865,7 @@ __bch2_fs_log_msg(struct bch_fs *c, unsigned commit_flags, const char *fmt,
 		memcpy(l->d, buf.buf, buf.pos);
 		c->journal.early_journal_entries.nr += jset_u64s(u64s);
 	} else {
-		ret = bch2_trans_commit_do(c, NULL, NULL,
-			BCH_TRANS_COMMIT_lazy_rw|commit_flags,
+		ret = bch2_trans_commit_do(c, NULL, NULL, commit_flags,
 			__bch2_trans_log_msg(trans, &buf, u64s));
 	}
 err:

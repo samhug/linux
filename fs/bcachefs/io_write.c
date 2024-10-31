@@ -369,7 +369,7 @@ static int bch2_write_index_default(struct bch_write_op *op)
 				     bkey_start_pos(&sk.k->k),
 				     BTREE_ITER_slots|BTREE_ITER_intent);
 
-		ret =   bch2_bkey_set_needs_rebalance(c, sk.k, &op->opts) ?:
+		ret =   bch2_bkey_set_needs_rebalance(c, &op->opts, sk.k) ?:
 			bch2_extent_update(trans, inum, &iter, sk.k,
 					&op->res,
 					op->new_i_size, &op->i_sectors_delta,
@@ -1300,11 +1300,8 @@ retry:
 						 bucket_to_u64(i->b),
 						 BUCKET_NOCOW_LOCK_UPDATE);
 
-			rcu_read_lock();
-			u8 *gen = bucket_gen(ca, i->b.offset);
-			stale = !gen ? -1 : gen_after(*gen, i->gen);
-			rcu_read_unlock();
-
+			int gen = bucket_gen_get(ca, i->b.offset);
+			stale = gen < 0 ? gen : gen_after(gen, i->gen);
 			if (unlikely(stale)) {
 				stale_at = i;
 				goto err_bucket_stale;
