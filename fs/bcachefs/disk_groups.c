@@ -104,7 +104,8 @@ void bch2_disk_groups_to_text(struct printbuf *out, struct bch_fs *c)
 			continue;
 		}
 
-		prt_printf(out, "[parent %d devs", g->entries[i].parent);
+		prt_printf(out, "[label %s parent %d devs",
+			g->entries[i].label, g->entries[i].parent);
 		for_each_member_device_rcu(c, ca, &g->entries[i].devs)
 			prt_printf(out, " %s", ca->name);
 		prt_printf(out, "]");
